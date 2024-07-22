@@ -15,56 +15,57 @@ typedef OnTap = void Function(Flushbar flushbar);
 /// A highly customizable widget so you can notify your user when you fell like he needs a beautiful explanation.
 // ignore: must_be_immutable
 class Flushbar<T> extends StatefulWidget {
-  Flushbar(
-      {Key? key,
-      this.title,
-      this.safeArea = true,
-      this.titleColor,
-      this.titleSize,
-      this.message,
-      this.messageSize,
-      this.messageColor,
-      this.titleText,
-      this.messageText,
-      this.icon,
-      this.shouldIconPulse = true,
-      this.maxWidth,
-      this.margin = const EdgeInsets.all(0.0),
-      this.padding = const EdgeInsets.all(16),
-      this.borderRadius,
-      this.textDirection = TextDirection.ltr,
-      this.borderColor,
-      this.borderWidth = 1.0,
-      this.backgroundColor = const Color(0xFF303030),
-      this.leftBarIndicatorColor,
-      this.boxShadows,
-      this.backgroundGradient,
-      this.mainButton,
-      this.onTap,
-      this.duration,
-      this.isDismissible = true,
-      this.dismissDirection = FlushbarDismissDirection.VERTICAL,
-      this.showProgressIndicator = false,
-      this.progressIndicatorController,
-      this.progressIndicatorBackgroundColor,
-      this.progressIndicatorValueColor,
-      this.flushbarPosition = FlushbarPosition.BOTTOM,
-      this.positionOffset = 0.0,
-      this.flushbarStyle = FlushbarStyle.FLOATING,
-      this.forwardAnimationCurve = Curves.easeOutCirc,
-      this.reverseAnimationCurve = Curves.easeOutCirc,
-      this.animationDuration = const Duration(seconds: 1),
-      FlushbarStatusCallback? onStatusChanged,
-      this.barBlur = 0.0,
-      this.blockBackgroundInteraction = false,
-      this.routeBlur,
-      this.routeColor,
-      this.userInputForm,
-      this.endOffset,
-      this.flushbarRoute // Please dont init this
-      })
-      // ignore: prefer_initializing_formals
-      : onStatusChanged = onStatusChanged,
+  Flushbar({
+    Key? key,
+    this.title,
+    this.safeArea = true,
+    this.titleColor,
+    this.titleSize,
+    this.message,
+    this.messageSize,
+    this.messageColor,
+    this.titleText,
+    this.messageText,
+    this.icon,
+    this.shouldIconPulse = true,
+    this.maxWidth,
+    this.margin = const EdgeInsets.all(0.0),
+    this.padding = const EdgeInsets.all(16),
+    this.borderRadius,
+    this.textDirection = TextDirection.ltr,
+    this.borderColor,
+    this.borderWidth = 1.0,
+    this.backgroundColor = const Color(0xFF303030),
+    this.leftBarIndicatorColor,
+    this.boxShadows,
+    this.backgroundGradient,
+    this.mainButton,
+    this.onTap,
+    this.duration,
+    this.isDismissible = true,
+    this.dismissDirection = FlushbarDismissDirection.VERTICAL,
+    this.showProgressIndicator = false,
+    this.progressIndicatorController,
+    this.progressIndicatorBackgroundColor,
+    this.progressIndicatorValueColor,
+    this.flushbarPosition = FlushbarPosition.BOTTOM,
+    this.positionOffset = 0.0,
+    this.flushbarStyle = FlushbarStyle.FLOATING,
+    this.forwardAnimationCurve = Curves.easeOutCirc,
+    this.reverseAnimationCurve = Curves.easeOutCirc,
+    this.animationDuration = const Duration(seconds: 1),
+    FlushbarStatusCallback? onStatusChanged,
+    this.barBlur = 0.0,
+    this.blockBackgroundInteraction = false,
+    this.routeBlur,
+    this.routeColor,
+    this.userInputForm,
+    this.endOffset,
+    this.flushbarRoute, // Please dont init this
+    this.progressPosition = FlushbarProgressPosition.TOP,
+  })  
+  // ignore: prefer_initializing_formals
+  : onStatusChanged = onStatusChanged,
         super(key: key) {
     onStatusChanged = onStatusChanged ?? (status) {};
   }
@@ -226,6 +227,10 @@ class Flushbar<T> extends StatefulWidget {
   /// For custom safeArea you can use margin instead
   final bool safeArea;
 
+  /// Choose whether the progress indicator should be shown at the top or at the bottom
+  /// Its default is [FlushbarProgressPosition.TOP]
+  final FlushbarProgressPosition progressPosition;
+
   route.FlushbarRoute<T?>? flushbarRoute;
 
   /// Show the flushbar. Kicks in [FlushbarStatus.IS_APPEARING] state followed by [FlushbarStatus.SHOWING]
@@ -304,6 +309,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
   GlobalKey? _backgroundBoxKey;
   FlushbarStatus? currentStatus;
   AnimationController? _fadeController;
+  AnimationController? _progressController;
   late Animation<double> _fadeAnimation;
   late bool _isTitlePresent;
   late double _messageTopMargin;
@@ -345,7 +351,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
   void dispose() {
     _fadeController?.dispose();
     widget.progressIndicatorController?.dispose();
-
+    _progressController?.dispose();
     _focusAttachment.detach();
     _focusNode!.dispose();
     super.dispose();
@@ -365,6 +371,14 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
   }
 
   void _configureProgressIndicatorAnimation() {
+    _progressController = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+    );
+    _progressController?.addListener(() {
+      setState(() {});
+    });
+    _progressController?.reverse(from: 1.0);
     if (widget.showProgressIndicator &&
         widget.progressIndicatorController != null) {
       _progressAnimation = CurvedAnimation(
@@ -499,11 +513,16 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildProgressIndicator(),
+          if (widget.progressPosition == FlushbarProgressPosition.TOP) ...[
+            _buildProgressIndicator()
+          ],
           Row(
             mainAxisSize: MainAxisSize.max,
             children: _getAppropriateRowLayout(),
           ),
+          if (widget.progressPosition == FlushbarProgressPosition.BOTTOM) ...[
+            _buildProgressIndicator()
+          ],
         ],
       ),
     );
@@ -526,6 +545,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
       return LinearProgressIndicator(
         backgroundColor: widget.progressIndicatorBackgroundColor,
         valueColor: widget.progressIndicatorValueColor,
+        value: _progressController?.value,
       );
     }
 
@@ -785,3 +805,6 @@ enum FlushbarDismissDirection { HORIZONTAL, VERTICAL }
 /// [FlushbarStatus.IS_APPEARING] Flushbar is moving towards [FlushbarStatus.SHOWING]
 /// [FlushbarStatus.IS_HIDING] Flushbar is moving towards [] [FlushbarStatus.DISMISSED]
 enum FlushbarStatus { SHOWING, DISMISSED, IS_APPEARING, IS_HIDING }
+
+/// Indicates whether the progress indicator should be shown at the top or at the bottom
+enum FlushbarProgressPosition { TOP, BOTTOM }

@@ -373,7 +373,7 @@ class _FlushbarState<K extends Object?> extends State<Flushbar<K>>
   void _configureProgressIndicatorAnimation() {
     _progressController = AnimationController(
       vsync: this,
-      duration: widget.duration,
+      duration: widget.duration ?? widget.animationDuration,
     );
     _progressController?.addListener(() {
       setState(() {});
